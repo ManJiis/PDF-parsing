@@ -33,7 +33,7 @@ public class PdfTemplateUtils {
         log.info("sys_os : {}", SYS_OS);
         PDF_EXECUTOR_SERVICE = new ThreadPoolExecutor(
                 20,
-                200,
+                50,
                 10L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>(3000),
                 new NamedThreadFactory("pdf-pool-exec-", false),
@@ -54,51 +54,7 @@ public class PdfTemplateUtils {
             CountDownLatch downLatch = new CountDownLatch(modelList.size());
             for (TemplateDataModel dataModel : modelList) {
                 PDF_EXECUTOR_SERVICE.execute(() -> {
-                    long currentTimeMillis = System.currentTimeMillis();
-
-//                    String newFileName = dataModel.getTemplateEnName() + "_" + currentTimeMillis + ".pdf";
-                    String newFileName = dataModel.getTemplateEnName() + "_" + IdUtils.snowflakeId() + ".pdf";
-
-                    log.info("--------> 当前时间: {}", currentTimeMillis);
-                    log.info("{} 线程开始执行任务 文件名: {}", Thread.currentThread().getName(), newFileName);
-                    log.info("\n===================\nTemplateBasePath : {}\nnewFileName : {} \n===================", dataModel.getTemplateBasePath(), newFileName);
-
-                    // eg: /D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/
-                    String templatePath = ClassLoader.getSystemResource(dataModel.getTemplateBasePath()).getPath();
-                    if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
-                        // 读取的PDF模板全路径 eg: D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/12_个人信用信息查询与提供授权书.pdf
-                        templatePath = templatePath.replaceFirst("/", "") + dataModel.getTemplateName();
-                    } else {
-                        templatePath = templatePath + dataModel.getTemplateName();
-                    }
-                    ByteArrayOutputStream bos;
-                    InputStream inputStream = null;
-                    OutputStream outputStream = null;
-                    try {
-                        //-----------------------------------模板内容填充 start -----------------------------------------------------//
-                        bos = templateProcessing(dataModel, templatePath);
-                        //-----------------------------------模板内容填充 start -----------------------------------------------------//
-                        byte[] content = bos.toByteArray();
-                        inputStream = new ByteArrayInputStream(content);
-                        if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
-                            // ===============输出至本地 start ======================//
-                            outputStream = new FileOutputStream("D:\\test\\" + newFileName);
-                            outputStream.write(content);
-                        } else {
-                            // ===============TODO 上传至阿里OSS ======================//
-                            // do something
-                            System.out.println("OSS上传成功");
-                        }
-                        log.info("===========上传文件名 : {}", newFileName);
-                        returnList.add(newFileName);
-                    } catch (Exception e) {
-                        log.error("解析PDF异常 : {}", e.getMessage());
-                    } finally {
-                        // 计数器减一
-                        downLatch.countDown();
-                        closeQuietly(inputStream);
-                        closeQuietly(outputStream);
-                    }
+                    extracted(returnList, downLatch, dataModel);
                 });
             }
             try {
@@ -112,6 +68,54 @@ public class PdfTemplateUtils {
             return returnList;
         }
         return returnList;
+    }
+
+    private static void extracted(List<String> returnList, CountDownLatch downLatch, TemplateDataModel dataModel) {
+        long currentTimeMillis = System.currentTimeMillis();
+
+//                    String newFileName = dataModel.getTemplateEnName() + "_" + currentTimeMillis + ".pdf";
+        String newFileName = dataModel.getTemplateEnName() + "_" + IdUtils.snowflakeId() + ".pdf";
+
+        log.info("--------> 当前时间: {}", currentTimeMillis);
+        log.info("{} 线程开始执行任务 文件名: {}", Thread.currentThread().getName(), newFileName);
+        log.info("\n===================\nTemplateBasePath : {}\nnewFileName : {} \n===================", dataModel.getTemplateBasePath(), newFileName);
+
+        // eg: /D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/
+        String templatePath = ClassLoader.getSystemResource(dataModel.getTemplateBasePath()).getPath();
+        if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
+            // 读取的PDF模板全路径 eg: D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/12_个人信用信息查询与提供授权书.pdf
+            templatePath = templatePath.replaceFirst("/", "") + dataModel.getTemplateName();
+        } else {
+            templatePath = templatePath + dataModel.getTemplateName();
+        }
+        ByteArrayOutputStream bos;
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        try {
+            //-----------------------------------模板内容填充 start -----------------------------------------------------//
+            bos = templateProcessing(dataModel, templatePath);
+            //-----------------------------------模板内容填充 start -----------------------------------------------------//
+            byte[] content = bos.toByteArray();
+            inputStream = new ByteArrayInputStream(content);
+            if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
+                // ===============输出至本地 start ======================//
+                outputStream = new FileOutputStream("D:\\test\\" + newFileName);
+                outputStream.write(content);
+            } else {
+                // ===============TODO 上传至阿里OSS ======================//
+                // do something
+                System.out.println("OSS上传成功");
+            }
+            log.info("===========上传文件名 : {}", newFileName);
+            returnList.add(newFileName);
+        } catch (Exception e) {
+            log.error("解析PDF异常 : {}", e.getMessage());
+        } finally {
+            // 计数器减一
+            downLatch.countDown();
+            closeQuietly(inputStream);
+            closeQuietly(outputStream);
+        }
     }
 
     private static ByteArrayOutputStream templateProcessing(TemplateDataModel dataModel, String templatePath) throws DocumentException, IOException {
@@ -175,6 +179,10 @@ public class PdfTemplateUtils {
         closeQuietly((Closeable) output);
     }
 
+    /**
+     * 关闭流
+     * @param closeable /
+     */
     public static void closeQuietly(Closeable closeable) {
         try {
             if (closeable != null) {
