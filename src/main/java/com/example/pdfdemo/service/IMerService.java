@@ -14,4 +14,6 @@ public interface IMerService {
     List<String> entryPdfUpload(String merId);
 
     List<String> entryPdfUpload2(String merId, PdfTemplateDataProperties pdfTemplateDataProperties);
+
+    void threadPoolTest();
 }

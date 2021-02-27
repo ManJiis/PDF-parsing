@@ -1,5 +1,6 @@
 package com.example.pdfdemo.util;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.thread.NamedThreadFactory;
 import cn.hutool.core.util.ReflectUtil;
 import com.example.pdfdemo.entry.TemplateDataModel;
@@ -9,6 +10,7 @@ import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -20,39 +22,42 @@ import java.util.concurrent.*;
 /**
  * @author TANG
  */
+@Component
 public class PdfTemplateUtils {
     private final static Logger log = LoggerFactory.getLogger(PdfTemplateUtils.class);
 
-    private static final ExecutorService PDF_EXECUTOR_SERVICE;
+    private static ExecutorService PDF_EXECUTOR_SERVICE;
 
     private static final String SYS_OS_WINDOWS = "win";
-    private static final String SYS_OS;
+    private static final String SYS_OS_NAME;
 
     static {
-        SYS_OS = System.getProperty("os.name");
-        log.info("sys_os : {}", SYS_OS);
-        PDF_EXECUTOR_SERVICE = new ThreadPoolExecutor(
-                20,
-                50,
-                10L, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>(3000),
-                new NamedThreadFactory("pdf-pool-exec-", false),
-                // 拒绝策略
-                new ThreadPoolExecutor.AbortPolicy());
+        SYS_OS_NAME = System.getProperty("os.name");
+        log.info("SYS_OS_NAME : {}", SYS_OS_NAME);
+//        PDF_EXECUTOR_SERVICE = new ThreadPoolExecutor(
+//                20,
+//                50,
+//                10L, TimeUnit.SECONDS,
+//                new LinkedBlockingQueue<Runnable>(3000),
+//                new NamedThreadFactory("pdf-pool-exec-", false),
+//                // 拒绝策略
+//                new ThreadPoolExecutor.AbortPolicy());
     }
 
     /**
      * 根据PDF模板填充数据并将文件上传阿里OSS
      *
      * @param modelList /
-     * @return  list  返回文件名集合
+     * @return list  返回文件名集合
      */
-    public static List<String> fileUpload(List<TemplateDataModel> modelList) {
+    public static List<String> fileUpload(List<TemplateDataModel> modelList, ThreadPoolExecutor poolExecutor) {
         long beginTime = System.currentTimeMillis();
         List<String> returnList = new ArrayList<>();
         if (modelList != null && modelList.size() > 0) {
+            PDF_EXECUTOR_SERVICE = poolExecutor;
             CountDownLatch downLatch = new CountDownLatch(modelList.size());
             for (TemplateDataModel dataModel : modelList) {
+                log.info("TemplateDataModel: {}", dataModel);
                 PDF_EXECUTOR_SERVICE.execute(() -> {
                     extracted(returnList, downLatch, dataModel);
                 });
@@ -71,23 +76,24 @@ public class PdfTemplateUtils {
     }
 
     private static void extracted(List<String> returnList, CountDownLatch downLatch, TemplateDataModel dataModel) {
-        long currentTimeMillis = System.currentTimeMillis();
+//        long currentTimeMillis = System.currentTimeMillis();
+//        String newFileName = dataModel.getTemplateEnName() + "_" + currentTimeMillis + ".pdf";
 
-//                    String newFileName = dataModel.getTemplateEnName() + "_" + currentTimeMillis + ".pdf";
-        String newFileName = dataModel.getTemplateEnName() + "_" + IdUtils.snowflakeId() + ".pdf";
+        String newFileName = dataModel.getMerId() + dataModel.getTemplateEnName() + "_" + IdUtils.snowflakeId() + ".pdf";
 
-        log.info("--------> 当前时间: {}", currentTimeMillis);
-        log.info("{} 线程开始执行任务 文件名: {}", Thread.currentThread().getName(), newFileName);
-        log.info("\n===================\nTemplateBasePath : {}\nnewFileName : {} \n===================", dataModel.getTemplateBasePath(), newFileName);
+        log.info("上传文件名: {}", newFileName);
+        log.info("=========TemplateCode: [{}], TemplateBasePath: [{}]", dataModel.getTemplateCode(), dataModel.getTemplateBasePath());
 
         // eg: /D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/
         String templatePath = ClassLoader.getSystemResource(dataModel.getTemplateBasePath()).getPath();
-        if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
+        if (SYS_OS_NAME.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
             // 读取的PDF模板全路径 eg: D:/work-space/javaProject/demo/pdf-demo/target/classes/baosheng/pdf/entry/12_个人信用信息查询与提供授权书.pdf
             templatePath = templatePath.replaceFirst("/", "") + dataModel.getTemplateName();
         } else {
             templatePath = templatePath + dataModel.getTemplateName();
         }
+        log.info("===================模板全路径: {}", templatePath);
+
         ByteArrayOutputStream bos;
         InputStream inputStream = null;
         OutputStream outputStream = null;
@@ -97,19 +103,21 @@ public class PdfTemplateUtils {
             //-----------------------------------模板内容填充 start -----------------------------------------------------//
             byte[] content = bos.toByteArray();
             inputStream = new ByteArrayInputStream(content);
-            if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
+            if (SYS_OS_NAME.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
                 // ===============输出至本地 start ======================//
-                outputStream = new FileOutputStream("D:\\test\\" + newFileName);
+                File mkdir = FileUtil.mkdir("D:\\test\\");
+                outputStream = new FileOutputStream(mkdir + "/" + newFileName);
                 outputStream.write(content);
             } else {
                 // ===============TODO 上传至阿里OSS ======================//
                 // do something
                 System.out.println("OSS上传成功");
             }
-            log.info("===========上传文件名 : {}", newFileName);
-            returnList.add(newFileName);
+            String returnFileName = dataModel.getTemplateCode() + "_" + newFileName;
+            log.info("返回文件名: {}", returnFileName);
+            returnList.add(returnFileName);
         } catch (Exception e) {
-            log.error("解析PDF异常 : {}", e.getMessage());
+            log.error("解析PDF异常: {}", e.getMessage());
         } finally {
             // 计数器减一
             downLatch.countDown();
@@ -126,7 +134,7 @@ public class PdfTemplateUtils {
         // BaseFont.IDENTITY_H  带有垂直书写的Unicode编码
         // BaseFont.EMBEDDED    是个boolean值，如果字体要嵌入到PDF中，则为true
         BaseFont bf;
-        if (SYS_OS.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
+        if (SYS_OS_NAME.toLowerCase().startsWith(SYS_OS_WINDOWS)) {
             // Windows字体目录 C:\Windows\Fonts
             bf = BaseFont.createFont("C:\\Windows\\Fonts\\simfang.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
         } else {
@@ -181,6 +189,7 @@ public class PdfTemplateUtils {
 
     /**
      * 关闭流
+     *
      * @param closeable /
      */
     public static void closeQuietly(Closeable closeable) {
@@ -194,6 +203,15 @@ public class PdfTemplateUtils {
     }
 
     public static void main(String[] args) {
+        ThreadPoolExecutor threadP = new ThreadPoolExecutor(
+                20,
+                50,
+                10L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(3000),
+                new NamedThreadFactory("pdf-pool-exec-", false),
+                // 拒绝策略
+                new ThreadPoolExecutor.AbortPolicy());
+
         List<TemplateDataModel> list = new ArrayList<>();
 
         TemplateDataModel model1 = new TemplateDataModel();
@@ -223,11 +241,12 @@ public class PdfTemplateUtils {
         list.add(model1);
         list.add(model2);
 
-        List<String> fileNameList = fileUpload(list);
+        List<String> fileNameList = fileUpload(list, threadP);
 
         System.out.println("fileNameList = " + fileNameList);
 
         PDF_EXECUTOR_SERVICE.shutdown();
     }
+
 }
 

@@ -1,6 +1,9 @@
 package com.example.pdfdemo.controller;
 
+import cn.hutool.core.lang.Console;
+import cn.hutool.core.thread.ConcurrencyTester;
 import cn.hutool.core.thread.NamedThreadFactory;
+import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.example.pdfdemo.entry.TemplateDataModel;
 import com.example.pdfdemo.service.IMerService;
@@ -30,10 +33,9 @@ public class ExportController {
     @Autowired
     IMerService merService;
 
-
     @GetMapping("bs/active")
     public List<String> activePdfUpload() {
-        String merId = "1";
+        String merId = "0755-0001";
         return merService.activePdfUpload(merId);
     }
 
@@ -84,7 +86,7 @@ public class ExportController {
 
     @GetMapping("bs/entry")
     public List<String> entryPdfUpload() throws Exception {
-        String merId = "1";
+        String merId = "0755-0001";
         return merService.entryPdfUpload(merId);
     }
 
@@ -119,6 +121,15 @@ public class ExportController {
                 }
             });
         }
+    }
+
+    @GetMapping("test2")
+    public void test1() {
+        ConcurrencyTester tester = ThreadUtil.concurrencyTest(10, () -> {
+            merService.threadPoolTest();
+        });
+        // 获取总的执行时间，单位毫秒
+        Console.log(tester.getInterval());
     }
 
 

@@ -1,16 +1,21 @@
 package com.example.pdfdemo.service;
 
 import cn.hutool.extra.spring.SpringUtil;
+import com.example.pdfdemo.config.TaskThreadPool;
 import com.example.pdfdemo.entry.MerchantsDetail;
 import com.example.pdfdemo.entry.TemplateDataModel;
 import com.example.pdfdemo.util.MyBeanUtils;
 import com.example.pdfdemo.util.PdfTemplateDataProperties;
+import com.example.pdfdemo.util.PdfTemplateUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.example.pdfdemo.util.PdfTemplateUtils.fileUpload;
 
@@ -20,6 +25,9 @@ import static com.example.pdfdemo.util.PdfTemplateUtils.fileUpload;
  */
 @Service
 public class MerServiceImpl implements IMerService {
+
+    @Autowired
+    TaskThreadPool taskThreadPool;
 
     public MerchantsDetail findByMerId(String id) {
         MerchantsDetail list = new MerchantsDetail();
@@ -47,10 +55,10 @@ public class MerServiceImpl implements IMerService {
         List<TemplateDataModel> activeList = pdfTemplateDataProperties.getBsActiveList();
         for (TemplateDataModel model : activeList) {
             MyBeanUtils.copyPropertiesIgnoreNull(detail, model);
-            System.out.println("model = " + model);
+            model.setMerId(merId);
             list.add(model);
         }
-        return fileUpload(list);
+        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
     }
 
     @Override
@@ -67,11 +75,10 @@ public class MerServiceImpl implements IMerService {
         List<TemplateDataModel> bsEntryList = pdfTemplateDataProperties.getBsEntryList();
         for (TemplateDataModel model : bsEntryList) {
             MyBeanUtils.copyPropertiesIgnoreNull(detail, model);
-            System.out.println("model = " + model);
+            model.setMerId(merId);
             list.add(model);
         }
-        System.out.println("=======================\ntemplateDataProperties set size = " + set.size());
-        return fileUpload(list);
+        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
     }
 
 
@@ -84,9 +91,14 @@ public class MerServiceImpl implements IMerService {
         List<TemplateDataModel> bsEntryList = pdfTemplateDataProperties.getBsEntryList();
         for (TemplateDataModel model : bsEntryList) {
             MyBeanUtils.copyPropertiesIgnoreNull(detail, model);
-            System.out.println("model = " + model);
             list.add(model);
         }
-        return fileUpload(list);
+        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
+    }
+
+    @Override
+    public void threadPoolTest() {
+        ThreadPoolExecutor threadPoolExecutor = taskThreadPool.taskThreadPoolExecutor();
+        System.out.println(Thread.currentThread().getName() + "- threadPoolExecutor = " + threadPoolExecutor);
     }
 }

@@ -66,6 +66,10 @@ public class TemplateDataModel {
      **/
     private String templateName;
     /**
+     * 模板类型代码
+     */
+    private String templateCode;
+    /**
      * 模板英文名 用于存储的名称
      **/
     private String templateEnName;
