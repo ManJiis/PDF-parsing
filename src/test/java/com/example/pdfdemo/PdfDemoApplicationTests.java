@@ -1,14 +1,12 @@
 package com.example.pdfdemo;
 
-import com.example.pdfdemo.config.TaskThreadPool;
+import com.example.pdfdemo.config.ExecutorConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -17,7 +15,7 @@ import java.util.concurrent.Executors;
 class PdfDemoApplicationTests {
 
     @Autowired
-    TaskThreadPool taskThreadPool;
+    ExecutorConfig executorConfig;
 
     private static final ExecutorService SERVICE = Executors.newFixedThreadPool(10);
 

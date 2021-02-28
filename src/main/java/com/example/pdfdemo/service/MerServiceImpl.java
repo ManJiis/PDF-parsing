@@ -1,14 +1,13 @@
 package com.example.pdfdemo.service;
 
 import cn.hutool.extra.spring.SpringUtil;
-import com.example.pdfdemo.config.TaskThreadPool;
+import com.example.pdfdemo.config.ExecutorConfig;
 import com.example.pdfdemo.entry.MerchantsDetail;
 import com.example.pdfdemo.entry.TemplateDataModel;
 import com.example.pdfdemo.util.MyBeanUtils;
 import com.example.pdfdemo.util.PdfTemplateDataProperties;
 import com.example.pdfdemo.util.PdfTemplateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -16,8 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadPoolExecutor;
-
-import static com.example.pdfdemo.util.PdfTemplateUtils.fileUpload;
 
 /**
  * @author TANG
@@ -27,7 +24,7 @@ import static com.example.pdfdemo.util.PdfTemplateUtils.fileUpload;
 public class MerServiceImpl implements IMerService {
 
     @Autowired
-    TaskThreadPool taskThreadPool;
+    ExecutorConfig executorConfig;
 
     public MerchantsDetail findByMerId(String id) {
         MerchantsDetail list = new MerchantsDetail();
@@ -58,7 +55,7 @@ public class MerServiceImpl implements IMerService {
             model.setMerId(merId);
             list.add(model);
         }
-        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
+        return PdfTemplateUtils.fileUpload(list, executorConfig.taskThreadPoolExecutor());
     }
 
     @Override
@@ -78,7 +75,7 @@ public class MerServiceImpl implements IMerService {
             model.setMerId(merId);
             list.add(model);
         }
-        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
+        return PdfTemplateUtils.fileUpload(list, executorConfig.taskThreadPoolExecutor());
     }
 
 
@@ -93,12 +90,12 @@ public class MerServiceImpl implements IMerService {
             MyBeanUtils.copyPropertiesIgnoreNull(detail, model);
             list.add(model);
         }
-        return PdfTemplateUtils.fileUpload(list, taskThreadPool.taskThreadPoolExecutor());
+        return PdfTemplateUtils.fileUpload(list, executorConfig.taskThreadPoolExecutor());
     }
 
     @Override
     public void threadPoolTest() {
-        ThreadPoolExecutor threadPoolExecutor = taskThreadPool.taskThreadPoolExecutor();
+        ThreadPoolExecutor threadPoolExecutor = executorConfig.taskThreadPoolExecutor();
         System.out.println(Thread.currentThread().getName() + "- threadPoolExecutor = " + threadPoolExecutor);
     }
 }
