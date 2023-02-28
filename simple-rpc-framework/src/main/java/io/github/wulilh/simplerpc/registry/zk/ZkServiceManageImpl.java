@@ -67,7 +67,6 @@ public class ZkServiceManageImpl implements ServiceManage {
      * @param rpcServiceName 服务注册名称
      * @param address        服务地址
      */
-    @Override
     public void registerService(String rpcServiceName, InetSocketAddress address) {
         String servicePath = CuratorUtils.ZK_REGISTER_ROOT_PATH + "/" + rpcServiceName + address.toString();
         CuratorFramework zkClient = CuratorUtils.getZkClient();

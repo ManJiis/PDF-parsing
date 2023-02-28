@@ -19,13 +19,6 @@ public interface ServiceManage {
      */
     void publishService(RpcServiceConfig rpcServiceConfig);
 
-    /**
-     * 服务注册
-     *
-     * @param rpcServiceName 服务注册名称
-     * @param address        服务地址
-     */
-    void registerService(String rpcServiceName, InetSocketAddress address);
 
     /**
      * getService
